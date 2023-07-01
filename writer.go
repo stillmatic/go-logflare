@@ -48,6 +48,20 @@ type SlogData struct {
 	Metadata map[string]interface{} `json:"-"`
 }
 
+func (d *SlogData) UnmarshalJSON(p []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(p, &raw); err != nil {
+		return err
+	}
+
+	d.Level = raw["level"].(string)
+	d.Message = raw["message"].(string)
+	delete(raw, "level")
+	delete(raw, "message")
+	d.Metadata = raw
+	return nil
+}
+
 func (d *SlogData) GetLevel() string {
 	return d.Level
 }
@@ -66,6 +80,20 @@ type ZerologData struct {
 	Metadata map[string]interface{} `json:"-"`
 }
 
+func (d *ZerologData) UnmarshalJSON(p []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(p, &raw); err != nil {
+		return err
+	}
+
+	d.Level = raw["level"].(string)
+	d.Message = raw["msg"].(string)
+	delete(raw, "level")
+	delete(raw, "msg")
+	d.Metadata = raw
+	return nil
+}
+
 func (d *ZerologData) GetLevel() string {
 	return d.Level
 }
@@ -78,13 +106,18 @@ func (d *ZerologData) GetMetadata() map[string]interface{} {
 	return d.Metadata
 }
 
+// AuxData is an interface for structured data that can be converted to LogData.
 type AuxData interface {
 	GetLevel() string
 	GetMessage() string
 	GetMetadata() map[string]interface{}
 }
 
-func Convert[T AuxData](p []byte, levelKey, messageKey string) (logData *LogData, err error) {
+// Convert converts a json log line to a LogData struct.
+// It unmarshals to a struct that implements the AuxData interface, and then
+// builds the desired LogData struct from that.
+// It is about 40% slower than Convert.
+func ConvertGeneric[T AuxData](p []byte, levelKey, messageKey string) (logData *LogData, err error) {
 	var t T
 	if err := json.Unmarshal(p, &t); err != nil {
 		return nil, err
@@ -101,10 +134,8 @@ func Convert[T AuxData](p []byte, levelKey, messageKey string) (logData *LogData
 	return logData, nil
 }
 
-// ConvertExplicit converts a json log line to a LogData struct.
-// It is provided for completeness but is not recommended for use - the
-// Convert function should be used instead, as it is about 2x as fast.
-func ConvertExplicit(p []byte, levelKey, messageKey string) (*LogData, error) {
+// Convert converts a json log line to a LogData struct.
+func Convert(p []byte, levelKey, messageKey string) (*LogData, error) {
 	var metadata map[string]interface{}
 	if err := json.Unmarshal(p, &metadata); err != nil {
 		return nil, err

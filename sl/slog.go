@@ -19,7 +19,7 @@ func NewSlogWriter(client *gologflare.LogflareClient) *SlogWriter {
 }
 
 func (hw *SlogWriter) Write(p []byte) (n int, err error) {
-	logData, err := gologflare.Convert[*gologflare.SlogData](p, levelKey, messageKey)
+	logData, err := gologflare.Convert(p, levelKey, messageKey)
 	if err != nil {
 		return 0, err
 	}

@@ -12,4 +12,8 @@ Currently, we support the following logging libraries:
 
 The standardlib logger is provided in the main package. `slog` and `zerolog` are provided in their respective subpackages, to isolate dependencies. The main package is dependency-free. `slog` will eventually be promoted to the main package, once it is promoted to the standard library.
 
-Note that both `slog` and `zerolog` require overhead for serdes - internally, we unmarshal the structs in order to send them to Logflare. The standardlib logger does not require this and should be the fastest.
+Note that both `slog` and `zerolog` require overhead for serdes - internally, we unmarshal the structs in order to send them to Logflare. The standardlib logger does not require this and should be the fastest. However, it also has no understanding of metadata.
+
+```
+BenchmarkConvert/generic-32          	 1748362	       692.2 ns/op	     408 B/op	      13 allocs/op
+```

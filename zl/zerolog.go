@@ -18,7 +18,7 @@ func NewZerologWriter(client *gologflare.LogflareClient) *ZerologWriter {
 }
 
 func (hw *ZerologWriter) Write(p []byte) (n int, err error) {
-	logData, err := gologflare.Convert[*gologflare.ZerologData](p, levelKey, messageKey)
+	logData, err := gologflare.Convert(p, levelKey, messageKey)
 	if err != nil {
 		return 0, err
 	}
