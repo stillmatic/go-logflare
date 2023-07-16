@@ -125,5 +125,6 @@ func (c *DiscordClient) Flush() error {
 		}
 		payload.Reset()
 	}
+	c.buffer = make([]gologflare.LogData, 0)
 	return nil
 }
