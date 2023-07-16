@@ -143,10 +143,10 @@ func Convert(p []byte, levelKey, messageKey string) (*LogData, error) {
 	}
 
 	sb := &strings.Builder{}
-	if level, ok := metadata[levelKey]; ok {
-		levelStr, ok := level.(string)
+	if v, ok := metadata[levelKey]; ok {
+		levelStr, ok := v.(string)
 		if !ok {
-			return nil, fmt.Errorf("expected level to be string, got: %v", reflect.TypeOf(level))
+			return nil, fmt.Errorf("expected level to be string, got: %v", reflect.TypeOf(v))
 		}
 		level = levelStr
 		sb.WriteString(strings.ToUpper(levelStr))

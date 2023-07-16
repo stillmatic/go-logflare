@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -93,15 +94,22 @@ func strPtr(s string) *string {
 
 func (c *DiscordClient) convertMessageToDiscord(msg gologflare.LogData) Message {
 	var true = true
-	var false = false
 	var message Message
 	var embed Embed
 	var fields []Field
+	content := msg.Message
+	embedTitle := "metadata"
 
 	message.Username = &c.name
-	message.Content = &msg.Message
-	fields = append(fields, Field{Name: strPtr("level"), Value: strPtr(msg.Level), Inline: &false})
-
+	if msg.Level != "" {
+		embedTitle = msg.Level
+		// strip from content
+		splits := strings.SplitN(content, ": ", 2)
+		if len(splits) > 1 {
+			content = splits[1]
+		}
+	}
+	message.Content = &content
 	for key, value := range msg.Metadata {
 		key := key
 		value := value
@@ -114,7 +122,6 @@ func (c *DiscordClient) convertMessageToDiscord(msg gologflare.LogData) Message 
 			fields = append(fields, Field{Name: &key, Value: &v, Inline: &true})
 		}
 	}
-	embedTitle := "metadata"
 	embed.Title = &embedTitle
 	embed.Fields = &fields
 	message.Embeds = &[]Embed{embed}
