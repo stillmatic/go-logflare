@@ -136,6 +136,7 @@ func ConvertGeneric[T AuxData](p []byte, levelKey, messageKey string) (logData *
 
 // Convert converts a json log line to a LogData struct.
 func Convert(p []byte, levelKey, messageKey string) (*LogData, error) {
+	var level string
 	var metadata map[string]interface{}
 	if err := json.Unmarshal(p, &metadata); err != nil {
 		return nil, err
@@ -147,6 +148,7 @@ func Convert(p []byte, levelKey, messageKey string) (*LogData, error) {
 		if !ok {
 			return nil, fmt.Errorf("expected level to be string, got: %v", reflect.TypeOf(level))
 		}
+		level = levelStr
 		sb.WriteString(strings.ToUpper(levelStr))
 		sb.WriteString(": ")
 		delete(metadata, levelKey)
@@ -162,6 +164,7 @@ func Convert(p []byte, levelKey, messageKey string) (*LogData, error) {
 	}
 	logData := &LogData{
 		Message:  sb.String(),
+		Level:    level,
 		Metadata: metadata,
 	}
 	return logData, nil

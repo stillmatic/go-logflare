@@ -10,6 +10,7 @@ import (
 	"time"
 
 	gologflare "github.com/stillmatic/go-logflare"
+	"golang.org/x/sync/errgroup"
 )
 
 type DiscordClient struct {
@@ -19,6 +20,7 @@ type DiscordClient struct {
 	buffer      []gologflare.LogData
 	mu          sync.Mutex
 	flushPeriod time.Duration
+	bufPool     sync.Pool
 	flushSize   int
 }
 
@@ -33,6 +35,11 @@ func NewDiscordClient(url, name string, flushPeriod time.Duration, flushSize int
 		buffer:      make([]gologflare.LogData, 0),
 		flushPeriod: flushPeriod,
 		flushSize:   flushSize,
+		bufPool: sync.Pool{
+			New: func() any {
+				return new(bytes.Buffer)
+			},
+		},
 	}
 	go dc.startTimer()
 	return dc
@@ -86,13 +93,14 @@ func strPtr(s string) *string {
 
 func (c *DiscordClient) convertMessageToDiscord(msg gologflare.LogData) Message {
 	var true = true
+	var false = false
 	var message Message
 	var embed Embed
 	var fields []Field
 
 	message.Username = &c.name
 	message.Content = &msg.Message
-	fields = append(fields, Field{Name: strPtr("level"), Value: strPtr(msg.Level), Inline: &true})
+	fields = append(fields, Field{Name: strPtr("level"), Value: strPtr(msg.Level), Inline: &false})
 
 	for key, value := range msg.Metadata {
 		key := key
@@ -120,29 +128,41 @@ func (c *DiscordClient) Flush() error {
 		return nil
 	}
 
-	payload := new(bytes.Buffer)
+	var eg errgroup.Group
+	eg.SetLimit(4)
 	for _, log := range c.buffer {
-		message := c.convertMessageToDiscord(log)
-		err := json.NewEncoder(payload).Encode(message)
-		if err != nil {
-			return fmt.Errorf("error marshalling logs: %s", err)
-		}
-		resp, err := http.Post(c.url, "application/json", payload)
-		if err != nil {
-			return fmt.Errorf("error posting logs: %s", err)
-		}
-		if resp.StatusCode != 200 && resp.StatusCode != 204 {
-			defer resp.Body.Close()
-
-			responseBody, err := ioutil.ReadAll(resp.Body)
-			if err != nil {
-				return err
+		log := log
+		eg.Go(func() error {
+			message := c.convertMessageToDiscord(log)
+			buf := c.bufPool.Get().(*bytes.Buffer)
+			if buf == nil {
+				buf = new(bytes.Buffer)
 			}
+			err := json.NewEncoder(buf).Encode(message)
+			if err != nil {
+				return fmt.Errorf("error marshalling logs: %s", err)
+			}
+			resp, err := http.Post(c.url, "application/json", buf)
+			if err != nil {
+				return fmt.Errorf("error posting logs: %s", err)
+			}
+			if resp.StatusCode != 200 && resp.StatusCode != 204 {
+				defer resp.Body.Close()
 
-			return fmt.Errorf(string(responseBody))
-		}
-		payload.Reset()
+				responseBody, err := ioutil.ReadAll(resp.Body)
+				if err != nil {
+					return err
+				}
+				return fmt.Errorf(string(responseBody))
+			}
+			c.bufPool.Put(buf)
+			return nil
+		})
 	}
 	c.buffer = make([]gologflare.LogData, 0)
+	err := eg.Wait()
+	if err != nil {
+		return err
+	}
 	return nil
 }

@@ -16,7 +16,9 @@ const (
 )
 
 type LogData struct {
-	Message  string                 `json:"message"`
+	Message string `json:"message"`
+	// Level is not actually in the spec and is dropped, but we need elsewhere.
+	Level    string                 `json:"level,omitempty"`
 	Metadata map[string]interface{} `json:"metadata"`
 }
 
@@ -103,24 +105,24 @@ func (c *LogflareClient) Flush() error {
 	}
 	payload, err := json.Marshal(LogPayload{Batch: c.buffer})
 	if err != nil {
-		return fmt.Errorf("Error marshalling logs: %s", err)
+		return fmt.Errorf("error marshalling logs: %s", err)
 	}
 	req, err := http.NewRequest("POST", c.url, bytes.NewBuffer(payload))
 	if err != nil {
-		return fmt.Errorf("Error creating request: %s", err)
+		return fmt.Errorf("error creating request: %s", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-API-KEY", c.apiKey)
 	resp, err := c.client.Do(req)
 	if err != nil {
-		return fmt.Errorf("Error posting logs: %s", err)
+		return fmt.Errorf("error posting logs: %s", err)
 	}
 	defer resp.Body.Close()
 	c.buffer = make([]LogData, 0)
 	// TODO: this block should be deferred and sent somewhere else
 	if resp.StatusCode != http.StatusOK {
 		respBody, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("Error posting logs: %s", string(respBody))
+		return fmt.Errorf("error posting logs: %s", string(respBody))
 	}
 	return nil
 }
