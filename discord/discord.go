@@ -66,11 +66,12 @@ type Message struct {
 }
 
 type Embed struct {
-	Title       *string  `json:"title,omitempty"`
-	Url         *string  `json:"url,omitempty"`
-	Description *string  `json:"description,omitempty"`
-	Color       *string  `json:"color,omitempty"`
-	Fields      *[]Field `json:"fields,omitempty"`
+	Title       *string    `json:"title,omitempty"`
+	Url         *string    `json:"url,omitempty"`
+	Description *string    `json:"description,omitempty"`
+	Color       *string    `json:"color,omitempty"`
+	Fields      *[]Field   `json:"fields,omitempty"`
+	Timestamp   *time.Time `json:"timestamp,omitempty"`
 }
 
 type Field struct {
@@ -79,32 +80,49 @@ type Field struct {
 	Inline *bool   `json:"inline,omitempty"`
 }
 
+func strPtr(s string) *string {
+	return &s
+}
+
+func (c *DiscordClient) convertMessageToDiscord(msg gologflare.LogData) Message {
+	var true = true
+	var message Message
+	var embed Embed
+	var fields []Field
+
+	message.Username = &c.name
+	message.Content = &msg.Message
+	fields = append(fields, Field{Name: strPtr("level"), Value: strPtr(msg.Level), Inline: &true})
+
+	for key, value := range msg.Metadata {
+		key := key
+		value := value
+		v := fmt.Sprintf("%v", value)
+		switch key {
+		case "time", "timestamp":
+			ts, _ := time.Parse(time.RFC3339, v)
+			embed.Timestamp = &ts
+		default:
+			fields = append(fields, Field{Name: &key, Value: &v, Inline: &true})
+		}
+	}
+	embedTitle := "metadata"
+	embed.Title = &embedTitle
+	embed.Fields = &fields
+	message.Embeds = &[]Embed{embed}
+	return message
+}
+
 func (c *DiscordClient) Flush() error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if len(c.buffer) == 0 {
 		return nil
 	}
-	var true = true
 
 	payload := new(bytes.Buffer)
 	for _, log := range c.buffer {
-		var message Message
-		var embed Embed
-		var fields []Field
-
-		message.Username = &c.name
-		message.Content = &log.Message
-
-		for key, value := range log.Metadata {
-			v, ok := value.(string)
-			if !ok {
-				continue
-			}
-			fields = append(fields, Field{Name: &key, Value: &v, Inline: &true})
-		}
-		embed.Fields = &fields
-		message.Embeds = &[]Embed{embed}
+		message := c.convertMessageToDiscord(log)
 		err := json.NewEncoder(payload).Encode(message)
 		if err != nil {
 			return fmt.Errorf("error marshalling logs: %s", err)

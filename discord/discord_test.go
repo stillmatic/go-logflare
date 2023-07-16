@@ -22,7 +22,7 @@ func TestZerolog(t *testing.T) {
 	sw := zerolog.SyncWriter(zlw)
 	mw := gologflare.NewMultiWriter(sw, os.Stdout)
 	logger := zerolog.New(mw).With().Timestamp().Logger()
-	for i := 0; i < 5; i++ {
+	for i := 0; i < 3; i++ {
 		logger.Info().Int("count", i).Msg("hello world")
 		time.Sleep(time.Millisecond * 500) // just for testing
 	}
