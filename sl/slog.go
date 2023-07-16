@@ -11,10 +11,10 @@ const (
 
 // SlogWriter is a writer for the slog logger
 type SlogWriter struct {
-	*gologflare.LogflareClient
+	gologflare.LogClient
 }
 
-func NewSlogWriter(client *gologflare.LogflareClient) *SlogWriter {
+func NewSlogWriter(client gologflare.LogClient) *SlogWriter {
 	return &SlogWriter{client}
 }
 

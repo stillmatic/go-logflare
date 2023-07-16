@@ -10,10 +10,10 @@ import (
 
 // StdWriter is a writer for the standard library logger
 type StdWriter struct {
-	*LogflareClient
+	LogClient
 }
 
-func NewStdWriter(client *LogflareClient) *StdWriter {
+func NewStdWriter(client LogClient) *StdWriter {
 	return &StdWriter{client}
 }
 

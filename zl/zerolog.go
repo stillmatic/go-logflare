@@ -10,10 +10,10 @@ const (
 )
 
 type ZerologWriter struct {
-	*gologflare.LogflareClient
+	gologflare.LogClient
 }
 
-func NewZerologWriter(client *gologflare.LogflareClient) *ZerologWriter {
+func NewZerologWriter(client gologflare.LogClient) *ZerologWriter {
 	return &ZerologWriter{client}
 }
 
