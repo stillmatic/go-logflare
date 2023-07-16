@@ -17,12 +17,27 @@ func TestZerolog(t *testing.T) {
 	defer func() {
 		client.Flush()
 	}()
-	zlw := zl.NewZerologWriter(client)
-	sw := zerolog.SyncWriter(zlw)
-	mw := gologflare.NewMultiWriter(sw, os.Stdout)
-	logger := zerolog.New(mw).With().Timestamp().Logger()
-	for i := 0; i < 5; i++ {
-		logger.Info().Int("count", i).Msg("hello world")
-		time.Sleep(time.Millisecond * 500) // just for testing
-	}
+	t.Run("io.Writer", func(t *testing.T) {
+		zlw := zl.NewZerologWriter(client)
+		sw := zerolog.SyncWriter(zlw)
+		mw := gologflare.NewMultiWriter(sw, os.Stdout)
+		logger := zerolog.New(mw).With().Timestamp().Logger()
+		for i := 0; i < 5; i++ {
+			logger.Info().Int("count", i).Msg("hello world")
+			time.Sleep(time.Millisecond * 500) // just for testing
+		}
+	})
+	t.Run("zerolog.Hook", func(t *testing.T) {
+		logger := zerolog.New(os.Stdout).
+			Level(zerolog.TraceLevel).
+			With().
+			Timestamp().
+			Logger()
+
+		logger = logger.Hook(&zl.LogflareHook{client})
+		for i := 0; i < 5; i++ {
+			logger.Info().Int("count", i).Msg("hook world")
+			time.Sleep(time.Millisecond * 500) // just for testing
+		}
+	})
 }

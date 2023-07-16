@@ -1,6 +1,7 @@
 package zl
 
 import (
+	"github.com/rs/zerolog"
 	gologflare "github.com/stillmatic/go-logflare"
 )
 
@@ -25,6 +26,22 @@ func (hw *ZerologWriter) Write(p []byte) (n int, err error) {
 
 	hw.AddLog(*logData)
 	return len(p), nil
+}
+
+type LogflareHook struct {
+	*gologflare.LogflareClient
+}
+
+func (t *LogflareHook) Run(
+	e *zerolog.Event,
+	level zerolog.Level,
+	message string,
+) {
+	logData := gologflare.LogData{
+		Message:  message,
+		Metadata: make(map[string]interface{}),
+	}
+	t.AddLog(logData)
 }
 
 // func (hw *ZerologWriter) WriteLevel(level zerolog.Level, p []byte) (n int, err error) {
